@@ -39,7 +39,7 @@ class BrowserActivity : Activity() {
         window.navigationBarColor = bg
         privateMode = getSharedPreferences("atlas_browser", MODE_PRIVATE).getBoolean("private_mode", true)
         buildBrowser()
-        if (savedInstanceState == null) loadUrl("https://duckduckgo.com/")
+        if (savedInstanceState == null) loadUrl(getSharedPreferences("atlas_browser", MODE_PRIVATE).getString("homepage", "https://duckduckgo.com/") ?: "https://duckduckgo.com/")
     }
 
     private fun buildBrowser() {
@@ -175,10 +175,18 @@ class BrowserActivity : Activity() {
     private fun loadAddress(raw: String) {
         val value = raw.trim()
         if (value.isBlank()) return
+        val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
+        val engine = prefs.getString("search_engine", "DuckDuckGo") ?: "DuckDuckGo"
+        val searchBase = when (engine) {
+            "Google" -> "https://www.google.com/search?q="
+            "Bing" -> "https://www.bing.com/search?q="
+            "Brave" -> "https://search.brave.com/search?q="
+            else -> "https://duckduckgo.com/?q="
+        }
         val target = when {
             value.startsWith("https://") || value.startsWith("http://") -> value
             value.contains(".") && !value.contains(" ") -> "https://$value"
-            else -> "https://duckduckgo.com/?q=" + Uri.encode(value)
+            else -> searchBase + Uri.encode(value)
         }
         loadUrl(target)
     }
@@ -186,30 +194,51 @@ class BrowserActivity : Activity() {
     private fun click() { window.decorView.playSoundEffect(SoundEffectConstants.CLICK) }
 
     private fun showBrowserSettings() {
-        val options = arrayOf(
+        val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
+        val options = arrayOf("Change homepage", "Choose search engine",
             if (privateMode) "Turn off private mode" else "Turn on private mode",
-            "Clear browsing data",
-            "Open DuckDuckGo home",
-            "Open Android app settings"
-        )
-        AlertDialog.Builder(this)
-            .setTitle("Atlas Browser Settings")
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        privateMode = !privateMode
-                        getSharedPreferences("atlas_browser", MODE_PRIVATE).edit().putBoolean("private_mode", privateMode).apply()
-                        Toast.makeText(this, if (privateMode) "Private mode enabled for new pages" else "Private mode disabled for new pages", Toast.LENGTH_SHORT).show()
-                        web.settings.domStorageEnabled = !privateMode
-                        web.settings.databaseEnabled = !privateMode
-                        web.settings.cacheMode = if (privateMode) android.webkit.WebSettings.LOAD_NO_CACHE else android.webkit.WebSettings.LOAD_DEFAULT
-                        if (privateMode) clearData()
+            "Clear browsing data", "Open homepage", "Open Android app settings")
+        AlertDialog.Builder(this).setTitle("Customize Atlas Browser").setItems(options) { _, which ->
+            when (which) {
+                0 -> {
+                    val field = EditText(this).apply {
+                        setSingleLine(true)
+                        setText(prefs.getString("homepage", "https://duckduckgo.com/"))
+                        hint = "https://example.com"
                     }
-                    1 -> { clearData(); Toast.makeText(this, "Browsing data cleared", Toast.LENGTH_SHORT).show() }
-                    2 -> loadUrl("https://duckduckgo.com/")
-                    3 -> startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                    AlertDialog.Builder(this).setTitle("Browser homepage").setView(field)
+                        .setPositiveButton("Save") { _, _ ->
+                            val value = field.text.toString().trim()
+                            if (value.startsWith("https://") || value.startsWith("http://")) {
+                                prefs.edit().putString("homepage", value).apply()
+                                Toast.makeText(this, "Homepage saved", Toast.LENGTH_SHORT).show()
+                            } else Toast.makeText(this, "Enter a valid http(s) address", Toast.LENGTH_SHORT).show()
+                        }.setNegativeButton("Cancel", null).show()
                 }
-            }.setNegativeButton("Close", null).show()
+                1 -> {
+                    val engines = arrayOf("DuckDuckGo", "Google", "Bing", "Brave")
+                    val current = engines.indexOf(prefs.getString("search_engine", "DuckDuckGo")).coerceAtLeast(0)
+                    AlertDialog.Builder(this).setTitle("Search engine")
+                        .setSingleChoiceItems(engines, current) { dialog, index ->
+                            prefs.edit().putString("search_engine", engines[index]).apply()
+                            Toast.makeText(this, engines[index] + " selected", Toast.LENGTH_SHORT).show()
+                            dialog.dismiss()
+                        }.setNegativeButton("Cancel", null).show()
+                }
+                2 -> {
+                    privateMode = !privateMode
+                    prefs.edit().putBoolean("private_mode", privateMode).apply()
+                    web.settings.domStorageEnabled = !privateMode
+                    web.settings.databaseEnabled = !privateMode
+                    web.settings.cacheMode = if (privateMode) android.webkit.WebSettings.LOAD_NO_CACHE else android.webkit.WebSettings.LOAD_DEFAULT
+                    if (privateMode) clearData()
+                    Toast.makeText(this, if (privateMode) "Private mode enabled (best-effort)" else "Private mode disabled", Toast.LENGTH_SHORT).show()
+                }
+                3 -> { clearData(); Toast.makeText(this, "Browsing data cleared", Toast.LENGTH_SHORT).show() }
+                4 -> loadUrl(prefs.getString("homepage", "https://duckduckgo.com/") ?: "https://duckduckgo.com/")
+                5 -> startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+            }
+        }.setNegativeButton("Close", null).show()
     }
 
     private fun clearData() {
