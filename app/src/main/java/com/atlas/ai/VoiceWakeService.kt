@@ -20,6 +20,7 @@ class VoiceWakeService : Service() {
     private var speech: SpeechRecognizer? = null
     private var listening = false
     private var restarting = false
+    private var stopped = false
 
     override fun onCreate() { super.onCreate(); createChannel() }
 
@@ -79,7 +80,7 @@ class VoiceWakeService : Service() {
     }
 
     private fun listen() {
-        if (listening || restarting || speech == null || isDestroyed) return
+        if (listening || restarting || speech == null || stopped) return
         try {
             val i = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -92,7 +93,7 @@ class VoiceWakeService : Service() {
     }
 
     private fun restart(ms: Long) {
-        if (restarting || isDestroyed) return
+        if (restarting || stopped) return
         restarting = true
         handler.postDelayed({ restarting = false; listen() }, ms)
     }
@@ -149,6 +150,7 @@ class VoiceWakeService : Service() {
     private fun launch(i: Intent) { i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); startActivity(i) }
 
     override fun onDestroy() {
+        stopped = true
         handler.removeCallbacksAndMessages(null)
         try { speech?.cancel(); speech?.destroy() } catch (_: Exception) {}
         speech = null
