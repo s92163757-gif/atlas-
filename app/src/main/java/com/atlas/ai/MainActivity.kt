@@ -74,6 +74,20 @@ class MainActivity : Activity() {
         })
         header.addView(brand)
         header.addView(Button(this).apply {
+            text = "🎧"
+            textSize = 17f
+            setTextColor(Color.WHITE)
+            background = rounded(panel2, 16)
+            setOnClickListener { toggleAlwaysListening() }
+        })
+        header.addView(Button(this).apply {
+            text = "🎧"
+            textSize = 17f
+            setTextColor(Color.WHITE)
+            background = rounded(panel2, 16)
+            setOnClickListener { toggleAlwaysListening() }
+        })
+        header.addView(Button(this).apply {
             text = "⚙"
             textSize = 20f
             setTextColor(Color.WHITE)
@@ -177,6 +191,42 @@ class MainActivity : Activity() {
         params.bottomMargin = dp(6)
         messages.addView(card, params)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
+    }
+
+    private fun toggleAlwaysListening() {
+        val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
+        if (prefs.getBoolean("wake_service_running", false)) {
+            stopService(Intent(this, VoiceWakeService::class.java))
+            prefs.edit().putBoolean("wake_service_running", false).apply()
+            Toast.makeText(this, "Atlas wake listening stopped", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val permissions = mutableListOf(android.Manifest.permission.RECORD_AUDIO)
+        if (android.os.Build.VERSION.SDK_INT >= 33) permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        val missing = permissions.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 7010) else startWakeService()
+    }
+
+    private fun startWakeService() {
+        try {
+            androidx.core.content.ContextCompat.startForegroundService(
+                this, Intent(this, VoiceWakeService::class.java).setAction(VoiceWakeService.ACTION_START)
+            )
+            getSharedPreferences("atlas", MODE_PRIVATE).edit().putBoolean("wake_service_running", true).apply()
+            Toast.makeText(this, "Atlas is listening. Say: Atlas, open YouTube", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not start listening: " + (e.message ?: "permission required"), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 7010) {
+            if (grantResults.isNotEmpty() && grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED }) startWakeService()
+            else Toast.makeText(this, "Microphone and notification permissions are needed for always-listening.", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun startVoiceInput() {
