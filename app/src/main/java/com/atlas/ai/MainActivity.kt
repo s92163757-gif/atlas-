@@ -204,16 +204,15 @@ class MainActivity : Activity() {
         val permissions = mutableListOf(android.Manifest.permission.RECORD_AUDIO)
         if (android.os.Build.VERSION.SDK_INT >= 33) permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
         val missing = permissions.filter {
-            androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(it) != android.content.pm.PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) requestPermissions(missing.toTypedArray(), 7010) else startWakeService()
     }
 
     private fun startWakeService() {
         try {
-            androidx.core.content.ContextCompat.startForegroundService(
-                this, Intent(this, VoiceWakeService::class.java).setAction(VoiceWakeService.ACTION_START)
-            )
+            val serviceIntent = Intent(this, VoiceWakeService::class.java).setAction(VoiceWakeService.ACTION_START)
+            if (android.os.Build.VERSION.SDK_INT >= 26) startForegroundService(serviceIntent) else startService(serviceIntent)
             getSharedPreferences("atlas", MODE_PRIVATE).edit().putBoolean("wake_service_running", true).apply()
             Toast.makeText(this, "Atlas is listening. Say: Atlas, open YouTube", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
