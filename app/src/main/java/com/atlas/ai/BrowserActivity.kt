@@ -192,6 +192,32 @@ class BrowserActivity : Activity() {
         loadUrl(target)
     }
     private fun loadUrl(url: String) { if (url.equals("atlas://home", true)) loadHomePage() else web.loadUrl(url) }
+
+    private fun loadHomePage() {
+        val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
+        val engine = prefs.getString("search_engine", "DuckDuckGo") ?: "DuckDuckGo"
+        val action = when (engine) {
+            "Google" -> "https://www.google.com/search"
+            "Bing" -> "https://www.bing.com/search"
+            "Brave" -> "https://search.brave.com/search"
+            else -> "https://duckduckgo.com/"
+        }
+        val html = """
+            <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+            <style>
+            *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 50% 35%,#24205a 0%,#0c1028 48%,#070914 100%);color:#f7f7ff;font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center}
+            .wrap{width:100%;max-width:520px;padding:28px 22px;text-align:center}.logo{font-size:42px;font-weight:800;letter-spacing:5px;background:linear-gradient(100deg,#6ed8ff,#bd8aff);-webkit-background-clip:text;color:transparent}.sub{font-size:13px;color:#aeb4d2;margin:8px 0 28px}
+            form{display:flex;background:#202747;border:1px solid #55508a;border-radius:18px;padding:6px;box-shadow:0 12px 35px #0007}input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:white;font-size:15px;padding:12px}button{border:0;border-radius:13px;background:linear-gradient(135deg,#7166ff,#a04cff);color:white;font-weight:bold;padding:0 18px}
+            .links{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}.links a{color:#dce0ff;text-decoration:none;background:#202747;border:1px solid #343b68;border-radius:14px;padding:12px 15px;font-size:12px}.foot{color:#828baa;font-size:11px;margin-top:32px}
+            </style></head><body><main class="wrap"><div class="logo">ATLAS</div><div class="sub">Your space to explore the web</div>
+            <form action="$action" method="get"><input name="q" placeholder="Search the web or enter a question" autocomplete="off"><button type="submit">SEARCH</button></form>
+            <div class="links"><a href="https://duckduckgo.com/">DuckDuckGo</a><a href="https://www.youtube.com/">YouTube</a><a href="https://www.wikipedia.org/">Wikipedia</a><a href="https://github.com/">GitHub</a></div>
+            <div class="foot">Private search powered by $engine · Browse privately, your way</div></main></body></html>
+        """.trimIndent()
+        address.setText("atlas://home")
+        title.text = "Atlas Browser"
+        web.loadDataWithBaseURL("https://atlas.local/", html, "text/html", "UTF-8", null)
+    }
     private fun click() { window.decorView.playSoundEffect(SoundEffectConstants.CLICK) }
 
     private fun showBrowserSettings() {
@@ -210,7 +236,7 @@ class BrowserActivity : Activity() {
                     AlertDialog.Builder(this).setTitle("Browser homepage").setView(field)
                         .setPositiveButton("Save") { _, _ ->
                             val value = field.text.toString().trim()
-                            if (value.startsWith("https://") || value.startsWith("http://")) {
+                            if (value.equals("atlas://home", true) || value.startsWith("https://") || value.startsWith("http://")) {
                                 prefs.edit().putString("homepage", value).apply()
                                 Toast.makeText(this, "Homepage saved", Toast.LENGTH_SHORT).show()
                             } else Toast.makeText(this, "Enter a valid http(s) address", Toast.LENGTH_SHORT).show()
