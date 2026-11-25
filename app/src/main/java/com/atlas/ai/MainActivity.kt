@@ -44,6 +44,7 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
+        AtlasDeviceScanner.save(this, AtlasDeviceScanner.scan(this))
         buildScreen()
         addMessage("ATLAS", "Hey! Main Atlas hoon. Local AI server start rakho aur mujhse chat karo. Voice button se commands bhi de sakte ho.")
     }
@@ -181,6 +182,7 @@ class MainActivity : Activity() {
         dockItem("⌂", "ATLAS") { }
         dockItem("🌐", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)) }
         dockItem("⚙", "SETTINGS") { showSettings() }
+        dockItem("▦", "DEVICE") { startActivity(Intent(this, DeviceScanActivity::class.java)) }
         root.addView(dock, LinearLayout.LayoutParams(-1, dp(60)).apply { topMargin = dp(8) })
         setContentView(root)
     }
@@ -394,7 +396,7 @@ class MainActivity : Activity() {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
             }
-            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", 256)
+            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", getSharedPreferences("atlas", MODE_PRIVATE).getInt("recommended_tokens", 160))
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
