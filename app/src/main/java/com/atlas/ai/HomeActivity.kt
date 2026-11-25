@@ -42,6 +42,7 @@ class HomeActivity : Activity() {
         window.decorView.systemUiVisibility = 0
         allApps = loadApps()
         buildHome()
+        if (intent.getBooleanExtra("open_dock_customizer", false)) window.decorView.post { customizeDock() }
     }
 
     override fun onResume() {
@@ -158,10 +159,12 @@ class HomeActivity : Activity() {
             background = rounded(Color.argb(225, 34, 39, 67), 25)
             elevation = dp(8).toFloat()
         }
-        dockItem(dock, "✦", "ATLAS AI") { openMain("ai") }
+        val favorites = prefs.getStringSet("dock_apps", defaultDock()).orEmpty()
+            .mapNotNull { pkg -> allApps.firstOrNull { it.packageName == pkg } }.take(3)
+        favorites.forEach { app -> dockAppItem(dock, app) { launchApp(app.packageName) } }
+        dockItem(dock, "✦", "AI") { openMain("ai") }
         dockItem(dock, "◎", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)); overridePendingTransition(0, 0) }
-        dockItem(dock, "▦", "APPS") { search.requestFocus(); (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager).showSoftInput(search, InputMethodManager.SHOW_IMPLICIT) }
-        dockItem(dock, "＋", "EDIT DOCK") { customizeDock() }
+        dockItem(dock, "＋", "EDIT") { customizeDock() }
         root.addView(dock, LinearLayout.LayoutParams(-1, dp(70)).apply { topMargin = dp(8) })
         setContentView(root)
     }
@@ -254,6 +257,24 @@ class HomeActivity : Activity() {
         return wanted.filter { installed.contains(it) }.take(4).toSet()
     }
 
+    private fun dockAppItem(parent: LinearLayout, app: AppEntry, action: () -> Unit) {
+        val item = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            isClickable = true
+            isFocusable = true
+            setOnClickListener(action)
+            setOnLongClickListener { showAppActions(app); true }
+        }
+        item.addView(ImageView(this).apply { setImageDrawable(app.icon); scaleType = ImageView.ScaleType.FIT_CENTER },
+            LinearLayout.LayoutParams(dp(29), dp(29)))
+        item.addView(TextView(this).apply {
+            text = app.label; textSize = 7f; maxLines = 1; gravity = Gravity.CENTER
+            ellipsize = android.text.TextUtils.TruncateAt.END; setTextColor(Color.WHITE)
+        }, LinearLayout.LayoutParams(dp(48), -2))
+        parent.addView(item, LinearLayout.LayoutParams(0, -1, 1f))
+    }
+
     private fun dockItem(parent: LinearLayout, glyph: String, label: String, action: () -> Unit) {
         val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; isFocusable = true; setOnClickListener(action) }
         item.addView(TextView(this).apply { text = glyph; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
@@ -265,7 +286,8 @@ class HomeActivity : Activity() {
         TextView(this).apply { text = "$glyph  $label"; textSize = 11f; setTextColor(Color.WHITE); gravity = Gravity.CENTER; setPadding(dp(12), dp(10), dp(12), dp(10)); background = rounded(surface, 16); setOnClickListener { action() } }
 
     private fun openMain(section: String) {
-        startActivity(Intent(this, MainActivity::class.java).putExtra("atlas_open_section", section))
+        if (section == "settings") startActivity(Intent(this, SettingsActivity::class.java))
+        else startActivity(Intent(this, MainActivity::class.java))
         overridePendingTransition(0, 0)
     }
 
