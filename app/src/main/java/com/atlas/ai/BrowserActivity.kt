@@ -39,7 +39,7 @@ class BrowserActivity : Activity() {
         window.navigationBarColor = bg
         privateMode = getSharedPreferences("atlas_browser", MODE_PRIVATE).getBoolean("private_mode", true)
         buildBrowser()
-        if (savedInstanceState == null) loadUrl(getSharedPreferences("atlas_browser", MODE_PRIVATE).getString("homepage", "https://duckduckgo.com/") ?: "https://duckduckgo.com/")
+        if (savedInstanceState == null) loadUrl(getSharedPreferences("atlas_browser", MODE_PRIVATE).getString("homepage", "atlas://home") ?: "atlas://home")
     }
 
     private fun buildBrowser() {
@@ -72,7 +72,7 @@ class BrowserActivity : Activity() {
             background = rounded(panel, 18)
         }
         address = EditText(this).apply {
-            hint = "Search DuckDuckGo or enter address"
+            hint = "Search privately or enter a website"
             setHintTextColor(Color.rgb(143, 147, 168))
             setTextColor(Color.WHITE)
             textSize = 14f
@@ -137,7 +137,7 @@ class BrowserActivity : Activity() {
         root.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
 
         title = TextView(this).apply {
-            text = "Private search by DuckDuckGo"
+            text = "Atlas Browser  •  Private search powered by DuckDuckGo"
             textSize = 10f
             setTextColor(Color.rgb(147, 151, 174))
             setPadding(dp(4), dp(5), dp(4), dp(5))
@@ -150,10 +150,10 @@ class BrowserActivity : Activity() {
             setPadding(dp(4), dp(5), dp(4), dp(5))
             background = rounded(panel, 22)
         }
-        dockButton(dock, "⌂", "HOME") { finish() }
+        dockButton(dock, "⌂", "HOME") { loadHomePage() }
         dockButton(dock, "‹", "BACK") { if (web.canGoBack()) web.goBack() }
         dockButton(dock, "↻", "RELOAD") { web.reload() }
-        dockButton(dock, "＋", "NEW") { address.setText(""); loadUrl("https://duckduckgo.com/"); address.requestFocus() }
+        dockButton(dock, "＋", "NEW") { address.setText(""); loadHomePage(); address.requestFocus() }
         dockButton(dock, "⚙", "SETTINGS") { showBrowserSettings() }
         root.addView(dock, LinearLayout.LayoutParams(-1, dp(62)).apply { topMargin = dp(5) })
         setContentView(root)
@@ -183,6 +183,7 @@ class BrowserActivity : Activity() {
             "Brave" -> "https://search.brave.com/search?q="
             else -> "https://duckduckgo.com/?q="
         }
+        if (value.equals("home", true) || value.equals("atlas://home", true)) { loadHomePage(); return }
         val target = when {
             value.startsWith("https://") || value.startsWith("http://") -> value
             value.contains(".") && !value.contains(" ") -> "https://$value"
@@ -190,7 +191,7 @@ class BrowserActivity : Activity() {
         }
         loadUrl(target)
     }
-    private fun loadUrl(url: String) { web.loadUrl(url) }
+    private fun loadUrl(url: String) { if (url.equals("atlas://home", true)) loadHomePage() else web.loadUrl(url) }
     private fun click() { window.decorView.playSoundEffect(SoundEffectConstants.CLICK) }
 
     private fun showBrowserSettings() {
@@ -203,7 +204,7 @@ class BrowserActivity : Activity() {
                 0 -> {
                     val field = EditText(this).apply {
                         setSingleLine(true)
-                        setText(prefs.getString("homepage", "https://duckduckgo.com/"))
+                        setText(prefs.getString("homepage", "atlas://home"))
                         hint = "https://example.com"
                     }
                     AlertDialog.Builder(this).setTitle("Browser homepage").setView(field)
@@ -235,7 +236,7 @@ class BrowserActivity : Activity() {
                     Toast.makeText(this, if (privateMode) "Private mode enabled (best-effort)" else "Private mode disabled", Toast.LENGTH_SHORT).show()
                 }
                 3 -> { clearData(); Toast.makeText(this, "Browsing data cleared", Toast.LENGTH_SHORT).show() }
-                4 -> loadUrl(prefs.getString("homepage", "https://duckduckgo.com/") ?: "https://duckduckgo.com/")
+                4 -> loadUrl(prefs.getString("homepage", "atlas://home") ?: "atlas://home")
                 5 -> startActivity(android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
             }
         }.setNegativeButton("Close", null).show()
