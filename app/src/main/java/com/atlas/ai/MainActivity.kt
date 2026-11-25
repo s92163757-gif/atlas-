@@ -167,7 +167,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
             setPadding(dp(8), dp(7), dp(8), dp(7))
-            background = rounded(Color.rgb(31, 34, 52), 25)
+            background = rounded(Color.argb(220, 23, 27, 52), 30)
             elevation = dp(12).toFloat()
         }
         fun dockItem(glyph: String, label: String, action: () -> Unit) {
@@ -175,7 +175,7 @@ class MainActivity : Activity() {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                background = rounded(Color.rgb(43, 47, 70), 15)
+                background = rounded(Color.argb(90, 83, 91, 145), 17)
                 setPadding(dp(2), dp(4), dp(2), dp(3))
                 isClickable = true
                 isFocusable = true
@@ -193,8 +193,8 @@ class MainActivity : Activity() {
                     action()
                 }
             }
-            item.addView(TextView(this).apply { text = glyph; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
-            item.addView(TextView(this).apply { text = label; textSize = 7f; gravity = Gravity.CENTER; maxLines = 1; setTextColor(Color.rgb(190, 193, 214)) })
+            item.addView(TextView(this).apply { text = glyph; textSize = 23f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
+            item.addView(TextView(this).apply { text = label; textSize = 8.5f; gravity = Gravity.CENTER; maxLines = 1; setTextColor(Color.rgb(205, 210, 235)) })
             dock.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
         dockItem("⌂", "HOME") { scroll.smoothScrollTo(0, 0) }
