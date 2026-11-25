@@ -275,7 +275,7 @@ class HomeActivity : Activity() {
     }
 
     private fun dockItem(parent: LinearLayout, glyph: String, label: String, action: () -> Unit) {
-        val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; isFocusable = true; setOnClickListener(action) }
+        val item = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER; isClickable = true; isFocusable = true; setOnClickListener { action() } }
         item.addView(TextView(this).apply { text = glyph; textSize = 22f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
         item.addView(TextView(this).apply { text = label; textSize = 8f; gravity = Gravity.CENTER; setTextColor(Color.rgb(202, 205, 227)) })
         parent.addView(item, LinearLayout.LayoutParams(0, -1, 1f))
