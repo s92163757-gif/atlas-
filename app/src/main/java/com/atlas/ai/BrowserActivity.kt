@@ -108,6 +108,44 @@ class BrowserActivity : Activity() {
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(panel)
         }
         root.addView(progress, LinearLayout.LayoutParams(-1, dp(3)).apply { topMargin = dp(8) })
+        val webPlaceholder = TextView(this).apply {
+            text = "Preparing Atlas Browser…"
+            gravity = Gravity.CENTER
+            textSize = 13f
+            setTextColor(Color.rgb(180, 185, 210))
+            setBackgroundColor(bg)
+        }
+        root.addView(webPlaceholder, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        title = TextView(this).apply {
+            text = "Atlas Browser  •  Your web, your way"
+            textSize = 10f
+            setTextColor(Color.rgb(147, 151, 174))
+            setPadding(dp(4), dp(5), dp(4), dp(5))
+        }
+        root.addView(title)
+
+        val dock = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(5), dp(4), dp(5))
+            background = rounded(panel, 22)
+        }
+        dockButton(dock, "⌂", "OS HOME") { returnToLauncher() }
+        dockButton(dock, "⌕", "START") { loadHomePage() }
+        dockButton(dock, "‹", "BACK") { if (web.canGoBack()) web.goBack() else loadHomePage() }
+        dockButton(dock, "↻", "RELOAD") { web.reload() }
+        dockButton(dock, "⚙", "SETTINGS") { showBrowserSettings() }
+        root.addView(dock, LinearLayout.LayoutParams(-1, dp(62)).apply { topMargin = dp(5) })
+        setContentView(root)
+        // Draw the browser shell first; WebView initialization happens after the first frame.
+        root.post {
+            initializeWebView(root, webPlaceholder)
+            if (savedInstanceState == null) loadHomePage()
+        }
+    }
+
+    private fun initializeWebView(root: LinearLayout, placeholder: View) {
         web = WebView(this).apply {
             setBackgroundColor(bg)
             settings.javaScriptEnabled = true
@@ -139,29 +177,10 @@ class BrowserActivity : Activity() {
                 }
             }
         }
-        root.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        title = TextView(this).apply {
-            text = "Atlas Browser  •  Your web, your way"
-            textSize = 10f
-            setTextColor(Color.rgb(147, 151, 174))
-            setPadding(dp(4), dp(5), dp(4), dp(5))
-        }
-        root.addView(title)
-
-        val dock = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER
-            setPadding(dp(4), dp(5), dp(4), dp(5))
-            background = rounded(panel, 22)
-        }
-        dockButton(dock, "⌂", "OS HOME") { returnToLauncher() }
-        dockButton(dock, "⌕", "START") { loadHomePage() }
-        dockButton(dock, "‹", "BACK") { if (web.canGoBack()) web.goBack() else loadHomePage() }
-        dockButton(dock, "↻", "RELOAD") { web.reload() }
-        dockButton(dock, "⚙", "SETTINGS") { showBrowserSettings() }
-        root.addView(dock, LinearLayout.LayoutParams(-1, dp(62)).apply { topMargin = dp(5) })
-        setContentView(root)
+        val index = root.indexOfChild(placeholder)
+        root.removeView(placeholder)
+        root.addView(web, index.coerceAtLeast(0), LinearLayout.LayoutParams(-1, 0, 1f))
     }
 
     private fun dockButton(parent: LinearLayout, glyph: String, label: String, action: () -> Unit) {
