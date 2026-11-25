@@ -38,7 +38,7 @@ class BrowserActivity : Activity() {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
-        privateMode = getSharedPreferences("atlas_browser", MODE_PRIVATE).getBoolean("private_mode", true)
+        privateMode = getSharedPreferences("atlas_browser", MODE_PRIVATE).getBoolean("private_mode", false)
         val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
         if (prefs.getString("search_engine", null) == null || prefs.getString("search_engine", null) == "DuckDuckGo") {
             prefs.edit().putString("search_engine", "Google").putString("homepage", "atlas://home").apply()
@@ -62,7 +62,7 @@ class BrowserActivity : Activity() {
             setTextColor(Color.WHITE)
         }, LinearLayout.LayoutParams(0, dp(42), 1f))
         header.addView(TextView(this).apply {
-            text = "● PRIVATE"
+            text = "● ATLAS WEB"
             textSize = 10f
             letterSpacing = .08f
             setTextColor(Color.rgb(112, 218, 174))
