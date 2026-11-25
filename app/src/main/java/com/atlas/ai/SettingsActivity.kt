@@ -146,15 +146,18 @@ class SettingsActivity : Activity() {
             startActivity(Intent(this, DeviceScanActivity::class.java))
         }
 
-        section("Browser", "Your built-in Atlas browser with private DuckDuckGo search.")
+        section("Browser", "Your own Atlas start page with Google-powered web search.")
         val browser = card()
-        row(browser, "◎", "Open Atlas Browser", "Search privately or visit any website") {
+        row(browser, "◎", "Open Atlas Browser", "Search from Atlas or open any website") {
             startActivity(Intent(this, BrowserActivity::class.java))
         }
 
         section("Home screen & Dock", "Choose how Atlas looks and responds.")
         val home = card()
         row(home, "⌂", "Set as default Home app", "Choose Atlas as your Android launcher") { openDefaultHomeSettings() }
+        row(home, "▦", "Customize app dock", "Choose which installed apps appear at the bottom") {
+            startActivity(Intent(this, HomeActivity::class.java).putExtra("open_dock_customizer", true))
+        }
         toggle(home, "✧", "Dock animations", "Smooth icon movement", "dock_animation", true)
         toggle(home, "♫", "Touch sounds", "Subtle tap sounds", "ui_sounds", true)
         toggle(home, "◌", "Haptic feedback", "Gentle vibration on tap", "haptics", false)
