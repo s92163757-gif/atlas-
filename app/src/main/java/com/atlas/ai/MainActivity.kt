@@ -208,7 +208,7 @@ class MainActivity : Activity() {
             item.addView(TextView(this).apply { text = label; textSize = 8.5f; gravity = Gravity.CENTER; maxLines = 1; setTextColor(Color.rgb(205, 210, 235)) })
             dock.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
-        dockItem("⌂", "HOME") { scroll.smoothScrollTo(0, 0) }
+        dockItem("⌂", "HOME") { startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)); finish() }
         dockItem("🌐", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)) }
         dockItem("✦", "ATLAS AI") { input.requestFocus(); val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager; imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
         dockItem("⚙", "SETTINGS") { showSettings() }
