@@ -1,0 +1,4 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/atlas_icon_background" />
+    <item android:drawable="@drawable/atlas_icon_mark" android:gravity="center" android:width="76dp" android:height="76dp" />
+</layer-list>
