@@ -171,35 +171,38 @@ class MainActivity : Activity() {
             elevation = dp(12).toFloat()
         }
         fun dockItem(glyph: String, label: String, action: () -> Unit) {
+            val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                background = rounded(Color.rgb(43, 47, 70), 17)
-                setPadding(dp(8), dp(5), dp(8), dp(4))
+                background = rounded(Color.rgb(43, 47, 70), 15)
+                setPadding(dp(2), dp(4), dp(2), dp(3))
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
-                    if (getSharedPreferences("atlas", MODE_PRIVATE).getBoolean("dock_animation", true)) {
+                    if (prefs.getBoolean("dock_animation", true) && !prefs.getBoolean("reduce_motion", false)) {
                         animate().cancel()
-                        scaleX = 0.88f; scaleY = 0.88f
-                        animate().scaleX(1f).scaleY(1f).setDuration(240)
-                            .setInterpolator(android.view.animation.OvershootInterpolator()).start()
+                        scaleX = 0.94f; scaleY = 0.94f; alpha = 0.82f
+                        animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(170)
+                            .setInterpolator(android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)).start()
                     }
-                    if (getSharedPreferences("atlas", MODE_PRIVATE).getBoolean("ui_sounds", true))
+                    if (prefs.getBoolean("haptics", false))
+                        performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    if (prefs.getBoolean("ui_sounds", false))
                         window.decorView.playSoundEffect(android.view.SoundEffectConstants.CLICK)
                     action()
                 }
             }
-            item.addView(TextView(this).apply { text = glyph; textSize = 23f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
-            item.addView(TextView(this).apply { text = label; textSize = 8f; gravity = Gravity.CENTER; setTextColor(Color.rgb(190, 193, 214)) })
-            dock.addView(item, LinearLayout.LayoutParams(0, dp(52), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
+            item.addView(TextView(this).apply { text = glyph; textSize = 20f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
+            item.addView(TextView(this).apply { text = label; textSize = 7f; gravity = Gravity.CENTER; maxLines = 1; setTextColor(Color.rgb(190, 193, 214)) })
+            dock.addView(item, LinearLayout.LayoutParams(0, dp(54), 1f).apply { leftMargin = dp(2); rightMargin = dp(2) })
         }
         dockItem("⌂", "HOME") { scroll.smoothScrollTo(0, 0) }
         dockItem("🌐", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)) }
         dockItem("✦", "ATLAS AI") { input.requestFocus(); val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager; imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
         dockItem("⚙", "SETTINGS") { showSettings() }
         dockItem("▦", "DEVICE") { startActivity(Intent(this, DeviceScanActivity::class.java)) }
-        root.addView(dock, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(10) })
+        root.addView(dock, LinearLayout.LayoutParams(-1, dp(66)).apply { topMargin = dp(8) })
         setContentView(root)
     }
 
@@ -412,7 +415,10 @@ class MainActivity : Activity() {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
             }
-            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", getSharedPreferences("atlas", MODE_PRIVATE).getInt("recommended_tokens", 160))
+            val requestMessages = JSONArray()
+            requestMessages.put(JSONObject().put("role", "system").put("content", languageInstruction()))
+            for (i in 0 until localHistory.length()) requestMessages.put(localHistory.getJSONObject(i))
+            val payload = JSONObject().put("model", model).put("messages", requestMessages).put("stream", false).put("max_tokens", getSharedPreferences("atlas", MODE_PRIVATE).getInt("recommended_tokens", 160))
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
@@ -425,6 +431,55 @@ class MainActivity : Activity() {
             "ERROR:Can't reach local AI server. Keep LLM AI Server running on this phone. Details: " + (e.message ?: "connection failed")
         } finally {
             connection?.disconnect()
+        }
+    }
+
+    private fun languageInstruction(): String {
+        val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
+        val selected = prefs.getString("atlas_language", "auto") ?: "auto"
+        val autoLocale = Locale.getDefault()
+        val language = when (selected) {
+            "auto" -> when {
+                autoLocale.country.equals("PK", true) -> "Roman Urdu (Urdu language written in Latin/Roman letters)"
+                autoLocale.language == "ur" -> "Urdu"
+                else -> autoLocale.getDisplayLanguage(Locale.ENGLISH)
+            }
+            "ur-Latn" -> "Roman Urdu (Urdu language written in Latin/Roman letters)"
+            "zh-CN" -> "Simplified Chinese"
+            "zh-TW" -> "Traditional Chinese"
+            else -> Locale.forLanguageTag(selected).getDisplayLanguage(Locale.ENGLISH)
+        }
+        return "Reply naturally in $language. Keep using this language unless the user asks to switch. " +
+            "If the user writes in another language and clearly wants that language, follow their request. " +
+            "Do not claim the user's exact location or IP address."
+    }
+
+    private fun showLanguagePicker() {
+        val names = arrayOf("Auto (device language)", "Roman Urdu", "Urdu", "English", "Arabic", "Bengali", "Chinese (Simplified)", "Chinese (Traditional)", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Pashto", "Persian", "Portuguese", "Punjabi", "Russian", "Spanish", "Swahili", "Tamil", "Telugu", "Thai", "Turkish", "Vietnamese")
+        val codes = arrayOf("auto", "ur-Latn", "ur", "en", "ar", "bn", "zh-CN", "zh-TW", "fr", "de", "hi", "id", "it", "ja", "ko", "ms", "ps", "fa", "pt", "pa", "ru", "es", "sw", "ta", "te", "th", "tr", "vi")
+        val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
+        val selected = prefs.getString("atlas_language", "auto") ?: "auto"
+        val index = codes.indexOf(selected).coerceAtLeast(0)
+        AlertDialog.Builder(this)
+            .setTitle("Choose Atlas language")
+            .setSingleChoiceItems(names, index) { dialog, which ->
+                prefs.edit().putString("atlas_language", codes[which]).apply()
+                Toast.makeText(this, "Language set to " + names[which], Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun openDefaultHomeSettings() {
+        try {
+            startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+        } catch (_: Exception) {
+            try {
+                startActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME))
+            } catch (_: Exception) {
+                Toast.makeText(this, "Open Android Settings > Apps > Default apps > Home app, then choose Atlas.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
@@ -464,8 +519,40 @@ class MainActivity : Activity() {
         section("Personalization")
         row("Dock animations", "Smooth icon bounce on tap", prefs.getBoolean("dock_animation", true), "dock_animation")
         row("Sound effects", "Play subtle tap sounds", prefs.getBoolean("ui_sounds", true), "ui_sounds")
-        row("Haptic feedback", "Reserved for supported controls", prefs.getBoolean("haptics", true), "haptics")
+        row("Haptic feedback", "Gentle vibration on dock taps", prefs.getBoolean("haptics", false), "haptics")
         row("Reduce motion", "Use simpler transitions on slower phones", prefs.getBoolean("reduce_motion", false), "reduce_motion")
+        section("Language")
+        val languageNames = arrayOf("Auto (device language)", "Roman Urdu", "Urdu", "English", "Arabic", "Bengali", "Chinese (Simplified)", "Chinese (Traditional)", "French", "German", "Hindi", "Indonesian", "Italian", "Japanese", "Korean", "Malay", "Pashto", "Persian", "Portuguese", "Punjabi", "Russian", "Spanish", "Swahili", "Tamil", "Telugu", "Thai", "Turkish", "Vietnamese")
+        val languageCodes = arrayOf("auto", "ur-Latn", "ur", "en", "ar", "bn", "zh-CN", "zh-TW", "fr", "de", "hi", "id", "it", "ja", "ko", "ms", "ps", "fa", "pt", "pa", "ru", "es", "sw", "ta", "te", "th", "tr", "vi")
+        val currentLanguage = prefs.getString("atlas_language", "auto") ?: "auto"
+        val currentIndex = languageCodes.indexOf(currentLanguage).coerceAtLeast(0)
+        val languageButton = Button(this).apply {
+            text = "Chat language: " + languageNames[currentIndex]
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { showLanguagePicker() }
+        }
+        content.addView(languageButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        content.addView(TextView(this).apply {
+            text = "Auto uses your phone's language and region as a suggestion. You can choose any listed language anytime."
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+            setPadding(0, dp(4), 0, 0)
+        })
+        section("Default home screen")
+        val homeButton = Button(this).apply {
+            text = "Set Atlas as default Home app"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { openDefaultHomeSettings() }
+        }
+        content.addView(homeButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        content.addView(TextView(this).apply {
+            text = "Android will ask you to choose Atlas as the Home app. This does not replace Android itself."
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+            setPadding(0, dp(4), 0, 0)
+        })
         section("AI connection")
         content.addView(TextView(this).apply {
             text = "Local server address"
