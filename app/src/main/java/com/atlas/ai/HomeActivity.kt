@@ -120,7 +120,7 @@ class HomeActivity : Activity() {
             setHintTextColor(Color.rgb(183, 187, 211))
             setTextColor(Color.WHITE)
             textSize = 14f
-            singleLine = true
+            setSingleLine(true)
             setPadding(dp(16), dp(11), dp(16), dp(11))
             background = rounded(surface, 18)
             addTextChangedListener(object : android.text.TextWatcher {
@@ -262,7 +262,7 @@ class HomeActivity : Activity() {
             gravity = Gravity.CENTER
             isClickable = true
             isFocusable = true
-            setOnClickListener(action)
+            setOnClickListener { action() }
             setOnLongClickListener { showAppActions(app); true }
         }
         item.addView(ImageView(this).apply { setImageDrawable(app.icon); scaleType = ImageView.ScaleType.FIT_CENTER },
