@@ -46,7 +46,7 @@ class MainActivity : Activity() {
         window.navigationBarColor = bg
         AtlasDeviceScanner.save(this, AtlasDeviceScanner.scan(this))
         buildScreen()
-        addMessage("ATLAS", "Hey! Main Atlas hoon. Local AI server start rakho aur mujhse chat karo. Voice button se commands bhi de sakte ho.")
+        addMessage("ATLAS", "Hey! Main Atlas hoon. Local AI server start rakho aur mujhse chat karo. Voice button se commands bhi de sakte ho.\n\nAtlas response speed may depend on your device's performance and computing processing power.")
     }
 
     private fun buildScreen() {
@@ -292,6 +292,16 @@ class MainActivity : Activity() {
                 input.setText(spoken)
                 sendMessage()
             }
+        } else if (requestCode == 7011 && resultCode == RESULT_OK) {
+            data?.data?.let { uri ->
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    contentResolver.openInputStream(uri)?.use { android.app.WallpaperManager.getInstance(this).setStream(it) }
+                    Toast.makeText(this, "Wallpaper updated", Toast.LENGTH_SHORT).show()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Couldn't set wallpaper: " + (e.message ?: "unsupported image"), Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 
@@ -481,6 +491,20 @@ class MainActivity : Activity() {
                 Toast.makeText(this, "Open Android Settings > Apps > Default apps > Home app, then choose Atlas.", Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun chooseWallpaper() {
+        val picker = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "image/*"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        startActivityForResult(picker, 7011)
+    }
+
+    private fun openSystemSettings(action: String) {
+        try { startActivity(Intent(action)) }
+        catch (_: Exception) { startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) }
     }
 
     private fun showSettings() {
