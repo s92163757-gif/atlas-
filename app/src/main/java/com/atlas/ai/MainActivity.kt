@@ -563,6 +563,41 @@ class MainActivity : Activity() {
             setTextColor(Color.LTGRAY)
             setPadding(0, dp(4), 0, 0)
         })
+        section("Wallpaper & appearance")
+        val wallpaperButton = Button(this).apply {
+            text = "Choose phone wallpaper"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { chooseWallpaper() }
+        }
+        content.addView(wallpaperButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        val displayButton = Button(this).apply {
+            text = "Display settings"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { openSystemSettings(android.provider.Settings.ACTION_DISPLAY_SETTINGS) }
+        }
+        content.addView(displayButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+        section("Phone settings")
+        val systemSettings = listOf(
+            "Wi-Fi & network" to android.provider.Settings.ACTION_WIFI_SETTINGS,
+            "Sound & vibration" to android.provider.Settings.ACTION_SOUND_SETTINGS,
+            "Battery" to android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS,
+            "Apps" to android.provider.Settings.ACTION_APPLICATION_SETTINGS,
+            "Storage" to android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS,
+            "Security" to android.provider.Settings.ACTION_SECURITY_SETTINGS,
+            "Accessibility" to android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS,
+            "All Android settings" to android.provider.Settings.ACTION_SETTINGS
+        )
+        systemSettings.forEach { (label, action) ->
+            val actionButton = Button(this).apply {
+                text = label
+                setTextColor(Color.WHITE)
+                background = rounded(Color.rgb(65, 69, 103), 14)
+                setOnClickListener { openSystemSettings(action) }
+            }
+            content.addView(actionButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        }
         section("Default home screen")
         val homeButton = Button(this).apply {
             text = "Set Atlas as default Home app"
