@@ -117,20 +117,20 @@ class BrowserActivity : Activity() {
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean = false
                 override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                    title.text = "Loading…"
+                    this@BrowserActivity.title.text = "Loading…"
                     address.setText(url ?: "")
-                    progress.visibility = View.VISIBLE
+                    this@BrowserActivity.progress.visibility = View.VISIBLE
                 }
                 override fun onPageFinished(view: WebView?, url: String?) {
                     address.setText(url ?: "")
-                    title.text = view?.title?.take(42)?.ifBlank { "Ready" } ?: "Ready"
-                    progress.visibility = View.GONE
+                    this@BrowserActivity.title.text = view?.title?.take(42)?.ifBlank { "Ready" } ?: "Ready"
+                    this@BrowserActivity.progress.visibility = View.GONE
                 }
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                    progress.progress = newProgress
-                    progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
+                    this@BrowserActivity.progress.progress = newProgress
+                    this@BrowserActivity.progress.visibility = if (newProgress >= 100) View.GONE else View.VISIBLE
                 }
             }
         }
