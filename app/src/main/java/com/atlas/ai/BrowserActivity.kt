@@ -141,7 +141,7 @@ class BrowserActivity : Activity() {
         // Draw the browser shell first; WebView initialization happens after the first frame.
         root.post {
             initializeWebView(root, webPlaceholder)
-            if (savedInstanceState == null) loadHomePage()
+            loadHomePage()
         }
     }
 
