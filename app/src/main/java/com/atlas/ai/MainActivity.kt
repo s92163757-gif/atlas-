@@ -34,6 +34,7 @@ class MainActivity : Activity() {
     private lateinit var sendButton: Button
     private val executor = Executors.newSingleThreadExecutor()
     private val localHistory = JSONArray()
+    private val history = JSONArray() // retained for the optional Gemini request helper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
