@@ -74,11 +74,11 @@ class MainActivity : Activity() {
         })
         header.addView(brand)
         header.addView(Button(this).apply {
-            text = "🎧"
-            textSize = 17f
+            text = "🌐"
+            textSize = 18f
             setTextColor(Color.WHITE)
             background = rounded(panel2, 16)
-            setOnClickListener { toggleAlwaysListening() }
+            setOnClickListener { startActivity(Intent(this@MainActivity, BrowserActivity::class.java)) }
         })
         header.addView(Button(this).apply {
             text = "🎧"
@@ -162,6 +162,26 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
             setPadding(0, dp(8), 0, 0)
         })
+        val dock = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(5), dp(5), dp(5), dp(5))
+            background = rounded(panel, 22)
+        }
+        fun dockItem(glyph: String, label: String, action: () -> Unit) {
+            val item = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setOnClickListener { window.decorView.playSoundEffect(android.view.SoundEffectConstants.CLICK); action() }
+            }
+            item.addView(TextView(this).apply { text = glyph; textSize = 21f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
+            item.addView(TextView(this).apply { text = label; textSize = 9f; gravity = Gravity.CENTER; setTextColor(Color.rgb(160, 164, 186)) })
+            dock.addView(item, LinearLayout.LayoutParams(0, dp(48), 1f))
+        }
+        dockItem("⌂", "ATLAS") { }
+        dockItem("🌐", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)) }
+        dockItem("⚙", "SETTINGS") { showSettings() }
+        root.addView(dock, LinearLayout.LayoutParams(-1, dp(60)).apply { topMargin = dp(8) })
         setContentView(root)
     }
 
