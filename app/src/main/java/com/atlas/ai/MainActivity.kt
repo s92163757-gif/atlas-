@@ -166,24 +166,40 @@ class MainActivity : Activity() {
         val dock = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(dp(5), dp(5), dp(5), dp(5))
-            background = rounded(panel, 22)
+            setPadding(dp(8), dp(7), dp(8), dp(7))
+            background = rounded(Color.rgb(31, 34, 52), 25)
+            elevation = dp(12).toFloat()
         }
         fun dockItem(glyph: String, label: String, action: () -> Unit) {
             val item = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                setOnClickListener { window.decorView.playSoundEffect(android.view.SoundEffectConstants.CLICK); action() }
+                background = rounded(Color.rgb(43, 47, 70), 17)
+                setPadding(dp(8), dp(5), dp(8), dp(4))
+                isClickable = true
+                isFocusable = true
+                setOnClickListener {
+                    if (getSharedPreferences("atlas", MODE_PRIVATE).getBoolean("dock_animation", true)) {
+                        animate().cancel()
+                        scaleX = 0.88f; scaleY = 0.88f
+                        animate().scaleX(1f).scaleY(1f).setDuration(240)
+                            .setInterpolator(android.view.animation.OvershootInterpolator()).start()
+                    }
+                    if (getSharedPreferences("atlas", MODE_PRIVATE).getBoolean("ui_sounds", true))
+                        window.decorView.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+                    action()
+                }
             }
-            item.addView(TextView(this).apply { text = glyph; textSize = 21f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
-            item.addView(TextView(this).apply { text = label; textSize = 9f; gravity = Gravity.CENTER; setTextColor(Color.rgb(160, 164, 186)) })
-            dock.addView(item, LinearLayout.LayoutParams(0, dp(48), 1f))
+            item.addView(TextView(this).apply { text = glyph; textSize = 23f; gravity = Gravity.CENTER; setTextColor(Color.WHITE) })
+            item.addView(TextView(this).apply { text = label; textSize = 8f; gravity = Gravity.CENTER; setTextColor(Color.rgb(190, 193, 214)) })
+            dock.addView(item, LinearLayout.LayoutParams(0, dp(52), 1f).apply { leftMargin = dp(3); rightMargin = dp(3) })
         }
-        dockItem("⌂", "ATLAS") { }
+        dockItem("⌂", "HOME") { scroll.smoothScrollTo(0, 0) }
         dockItem("🌐", "BROWSER") { startActivity(Intent(this, BrowserActivity::class.java)) }
+        dockItem("✦", "ATLAS AI") { input.requestFocus(); val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager; imm.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT) }
         dockItem("⚙", "SETTINGS") { showSettings() }
         dockItem("▦", "DEVICE") { startActivity(Intent(this, DeviceScanActivity::class.java)) }
-        root.addView(dock, LinearLayout.LayoutParams(-1, dp(60)).apply { topMargin = dp(8) })
+        root.addView(dock, LinearLayout.LayoutParams(-1, dp(72)).apply { topMargin = dp(10) })
         setContentView(root)
     }
 
@@ -413,35 +429,103 @@ class MainActivity : Activity() {
     }
 
     private fun showSettings() {
+        val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(10), dp(18), dp(12))
+        }
+        val scroller = ScrollView(this).apply { addView(content) }
+        fun section(title: String) {
+            content.addView(TextView(this).apply {
+                text = title.uppercase(Locale.ROOT)
+                textSize = 11f
+                letterSpacing = 0.10f
+                typeface = Typeface.DEFAULT_BOLD
+                setTextColor(Color.rgb(139, 124, 255))
+                setPadding(0, dp(14), 0, dp(6))
+            })
+        }
+        fun row(title: String, subtitle: String, checked: Boolean, key: String) {
+            val line = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, dp(8), 0, dp(8))
+            }
+            val labels = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f) }
+            labels.addView(TextView(this).apply { text = title; textSize = 14f; setTextColor(Color.WHITE) })
+            labels.addView(TextView(this).apply { text = subtitle; textSize = 11f; setTextColor(Color.LTGRAY) })
+            line.addView(labels)
+            line.addView(android.widget.Switch(this).apply {
+                isChecked = checked
+                setOnCheckedChangeListener { _, value -> prefs.edit().putBoolean(key, value).apply() }
+            })
+            content.addView(line)
+        }
+        section("Personalization")
+        row("Dock animations", "Smooth icon bounce on tap", prefs.getBoolean("dock_animation", true), "dock_animation")
+        row("Sound effects", "Play subtle tap sounds", prefs.getBoolean("ui_sounds", true), "ui_sounds")
+        row("Haptic feedback", "Reserved for supported controls", prefs.getBoolean("haptics", true), "haptics")
+        row("Reduce motion", "Use simpler transitions on slower phones", prefs.getBoolean("reduce_motion", false), "reduce_motion")
+        section("AI connection")
+        content.addView(TextView(this).apply {
+            text = "Local server address"
+            textSize = 13f
+            setTextColor(Color.WHITE)
+        })
         val field = EditText(this).apply {
             hint = "http://127.0.0.1:11434"
             setSingleLine(true)
-            setText(getSharedPreferences("atlas", MODE_PRIVATE).getString("local_server_url", "http://127.0.0.1:11434"))
+            textSize = 13f
+            setTextColor(Color.WHITE)
+            setHintTextColor(Color.LTGRAY)
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            setBackground(rounded(Color.rgb(43, 47, 67), 12))
+            setText(prefs.getString("local_server_url", "http://127.0.0.1:11434"))
         }
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-            addView(TextView(this@MainActivity).apply {
-                text = "Local API server address. Keep LLM AI Server running on this phone. Gemini key is not needed for local chat."
-                textSize = 13f
-                setTextColor(Color.DKGRAY)
-            })
-            addView(field)
+        content.addView(field, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+        content.addView(TextView(this).apply {
+            text = "This address is for a model server running on this same phone. 127.0.0.1 is not a public server address."
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+            setPadding(0, dp(5), 0, 0)
+        })
+        section("Device & performance")
+        val deviceButton = Button(this).apply {
+            text = "Run device scan"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { startActivity(Intent(this@MainActivity, DeviceScanActivity::class.java)) }
         }
+        content.addView(deviceButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(4) })
+        val browserButton = Button(this).apply {
+            text = "Open Atlas Browser"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(65, 69, 103), 14)
+            setOnClickListener { startActivity(Intent(this@MainActivity, BrowserActivity::class.java)) }
+        }
+        content.addView(browserButton, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(5) })
+        section("Data & about")
+        content.addView(TextView(this).apply {
+            text = "Atlas AI • Local-first assistant\nYour chats stay on this device in the current app session."
+            textSize = 11f
+            setTextColor(Color.LTGRAY)
+        })
         AlertDialog.Builder(this)
-            .setTitle("Atlas Settings")
-            .setView(box)
+            .setTitle("Atlas Control Center")
+            .setView(scroller)
             .setPositiveButton("Save") { _, _ ->
                 val address = field.text.toString().trim().trimEnd('/')
-                getSharedPreferences("atlas", MODE_PRIVATE).edit().putString("local_server_url", address).apply()
-                Toast.makeText(this, "Local server address saved", Toast.LENGTH_SHORT).show()
+                if (address.startsWith("http://") || address.startsWith("https://")) {
+                    prefs.edit().putString("local_server_url", address).apply()
+                    Toast.makeText(this, "Settings saved", Toast.LENGTH_SHORT).show()
+                } else Toast.makeText(this, "Enter a valid http:// or https:// address", Toast.LENGTH_LONG).show()
             }
             .setNeutralButton("Clear chat") { _, _ ->
-                localHistory.length().let { while (localHistory.length() > 0) localHistory.remove(0) }
+                while (localHistory.length() > 0) localHistory.remove(0)
                 messages.removeAllViews()
                 addMessage("ATLAS", "Chat cleared. I'm ready.")
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton("Close", null)
             .show()
     }
 
