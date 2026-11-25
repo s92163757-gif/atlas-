@@ -120,7 +120,7 @@ class SettingsActivity : Activity() {
 
         section("AI assistant", "Manage Atlas AI and your on-device model connection.")
         val ai = card()
-        row(ai, "✦", "Open Atlas AI", "Return to the assistant and start chatting") { finish() }
+        row(ai, "✦", "Open Atlas AI", "Return to the assistant and start chatting") { startActivity(Intent(this, MainActivity::class.java)); finish() }
         ai.addView(TextView(this).apply {
             text = "Local AI server address"; textSize = 12f; typeface = Typeface.DEFAULT_BOLD
             setTextColor(Color.WHITE); setPadding(0, dp(10), 0, dp(6))
