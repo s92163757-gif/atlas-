@@ -2,6 +2,7 @@ package com.atlas.ai
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
@@ -38,8 +39,12 @@ class BrowserActivity : Activity() {
         window.statusBarColor = bg
         window.navigationBarColor = bg
         privateMode = getSharedPreferences("atlas_browser", MODE_PRIVATE).getBoolean("private_mode", true)
+        val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
+        if (prefs.getString("search_engine", null) == null || prefs.getString("search_engine", null) == "DuckDuckGo") {
+            prefs.edit().putString("search_engine", "Google").putString("homepage", "atlas://home").apply()
+        }
         buildBrowser()
-        if (savedInstanceState == null) loadUrl(getSharedPreferences("atlas_browser", MODE_PRIVATE).getString("homepage", "atlas://home") ?: "atlas://home")
+        if (savedInstanceState == null) loadHomePage()
     }
 
     private fun buildBrowser() {
@@ -137,7 +142,7 @@ class BrowserActivity : Activity() {
         root.addView(web, LinearLayout.LayoutParams(-1, 0, 1f))
 
         title = TextView(this).apply {
-            text = "Atlas Browser  •  Private search powered by DuckDuckGo"
+            text = "Atlas Browser  •  Your web, your way"
             textSize = 10f
             setTextColor(Color.rgb(147, 151, 174))
             setPadding(dp(4), dp(5), dp(4), dp(5))
@@ -150,10 +155,10 @@ class BrowserActivity : Activity() {
             setPadding(dp(4), dp(5), dp(4), dp(5))
             background = rounded(panel, 22)
         }
-        dockButton(dock, "⌂", "HOME") { loadHomePage() }
-        dockButton(dock, "‹", "BACK") { if (web.canGoBack()) web.goBack() }
+        dockButton(dock, "⌂", "OS HOME") { returnToLauncher() }
+        dockButton(dock, "⌕", "START") { loadHomePage() }
+        dockButton(dock, "‹", "BACK") { if (web.canGoBack()) web.goBack() else loadHomePage() }
         dockButton(dock, "↻", "RELOAD") { web.reload() }
-        dockButton(dock, "＋", "NEW") { address.setText(""); loadHomePage(); address.requestFocus() }
         dockButton(dock, "⚙", "SETTINGS") { showBrowserSettings() }
         root.addView(dock, LinearLayout.LayoutParams(-1, dp(62)).apply { topMargin = dp(5) })
         setContentView(root)
@@ -176,12 +181,12 @@ class BrowserActivity : Activity() {
         val value = raw.trim()
         if (value.isBlank()) return
         val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
-        val engine = prefs.getString("search_engine", "DuckDuckGo") ?: "DuckDuckGo"
+        val engine = prefs.getString("search_engine", "Google") ?: "Google"
         val searchBase = when (engine) {
             "Google" -> "https://www.google.com/search?q="
             "Bing" -> "https://www.bing.com/search?q="
             "Brave" -> "https://search.brave.com/search?q="
-            else -> "https://duckduckgo.com/?q="
+            else -> "https://www.google.com/search?q="
         }
         if (value.equals("home", true) || value.equals("atlas://home", true)) { loadHomePage(); return }
         val target = when {
@@ -195,12 +200,12 @@ class BrowserActivity : Activity() {
 
     private fun loadHomePage() {
         val prefs = getSharedPreferences("atlas_browser", MODE_PRIVATE)
-        val engine = prefs.getString("search_engine", "DuckDuckGo") ?: "DuckDuckGo"
+        val engine = prefs.getString("search_engine", "Google") ?: "Google"
         val action = when (engine) {
             "Google" -> "https://www.google.com/search"
             "Bing" -> "https://www.bing.com/search"
             "Brave" -> "https://search.brave.com/search"
-            else -> "https://duckduckgo.com/"
+            else -> "https://www.google.com/search"
         }
         val html = """
             <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -211,8 +216,8 @@ class BrowserActivity : Activity() {
             .links{display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:28px}.links a{color:#dce0ff;text-decoration:none;background:#202747;border:1px solid #343b68;border-radius:14px;padding:12px 15px;font-size:12px}.foot{color:#828baa;font-size:11px;margin-top:32px}
             </style></head><body><main class="wrap"><div class="logo">ATLAS</div><div class="sub">Your space to explore the web</div>
             <form action="$action" method="get"><input name="q" placeholder="Search the web or enter a question" autocomplete="off"><button type="submit">SEARCH</button></form>
-            <div class="links"><a href="https://duckduckgo.com/">DuckDuckGo</a><a href="https://www.youtube.com/">YouTube</a><a href="https://www.wikipedia.org/">Wikipedia</a><a href="https://github.com/">GitHub</a></div>
-            <div class="foot">Private search powered by $engine · Browse privately, your way</div></main></body></html>
+            <div class="links"><a href="https://www.google.com/">Google</a><a href="https://www.youtube.com/">YouTube</a><a href="https://www.wikipedia.org/">Wikipedia</a><a href="https://github.com/">GitHub</a></div>
+            <div class="foot">Atlas start page · Search results provided by $engine</div></main></body></html>
         """.trimIndent()
         address.setText("atlas://home")
         title.text = "Atlas Browser"
@@ -243,8 +248,8 @@ class BrowserActivity : Activity() {
                         }.setNegativeButton("Cancel", null).show()
                 }
                 1 -> {
-                    val engines = arrayOf("DuckDuckGo", "Google", "Bing", "Brave")
-                    val current = engines.indexOf(prefs.getString("search_engine", "DuckDuckGo")).coerceAtLeast(0)
+                    val engines = arrayOf("Google", "Bing", "Brave")
+                    val current = engines.indexOf(prefs.getString("search_engine", "Google")).coerceAtLeast(0)
                     AlertDialog.Builder(this).setTitle("Search engine")
                         .setSingleChoiceItems(engines, current) { dialog, index ->
                             prefs.edit().putString("search_engine", engines[index]).apply()
@@ -276,8 +281,14 @@ class BrowserActivity : Activity() {
         CookieManager.getInstance().flush()
     }
 
+    private fun returnToLauncher() {
+        startActivity(Intent(this, HomeActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+        finish()
+        overridePendingTransition(0, 0)
+    }
+
     override fun onBackPressed() {
-        if (::web.isInitialized && web.canGoBack()) web.goBack() else super.onBackPressed()
+        if (::web.isInitialized && web.canGoBack()) web.goBack() else returnToLauncher()
     }
     override fun onDestroy() {
         if (::web.isInitialized) { web.stopLoading(); web.destroy() }
