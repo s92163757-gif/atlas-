@@ -5,6 +5,9 @@ import android.app.AlertDialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.content.Intent
+import android.net.Uri
+import android.speech.RecognizerIntent
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -99,6 +102,12 @@ class MainActivity : Activity() {
             }
         }
         composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
+        composer.addView(Button(this).apply {
+            text = "Voice"
+            setTextColor(Color.WHITE)
+            background = rounded(Color.rgb(67, 72, 100), 20)
+            setOnClickListener { startVoiceInput() }
+        })
         sendButton = Button(this).apply {
             text = "Send"
             setTextColor(Color.WHITE)
@@ -132,16 +141,63 @@ class MainActivity : Activity() {
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
+    private fun startVoiceInput() {
+        try {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to Atlas")
+            }
+            @Suppress("DEPRECATION")
+            startActivityForResult(intent, 7001)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Voice input is not available on this phone", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    @Deprecated("Deprecated by Android")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 7001 && resultCode == RESULT_OK) {
+            val spoken = data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                input.setText(spoken)
+                sendMessage()
+            }
+        }
+    }
+
+    private fun runOfflineCommand(prompt: String): Boolean {
+        val command = prompt.trim().lowercase()
+        val target = when {
+            command.matches(Regex("(open|launch|start)\\s+youtube")) -> "https://www.youtube.com"
+            command.matches(Regex("(open|launch|start)\\s+google")) -> "https://www.google.com"
+            command.matches(Regex("(open|launch|start)\\s+chrome")) -> "https://www.google.com"
+            command.matches(Regex("(open|launch|start)\\s+whatsapp")) -> "https://wa.me/"
+            command.matches(Regex("(open|launch|start)\\s+maps")) -> "https://maps.google.com"
+            else -> null
+        } ?: return false
+        return try {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
+            addMessage("You", prompt)
+            addMessage("Atlas", "Opening " + target.substringAfter("://").substringBefore("/"))
+            true
+        } catch (_: Exception) {
+            addMessage("Atlas", "I couldn't open that app or website.")
+            true
+        }
+    }
+
     private fun sendMessage() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty()) return
+        input.setText("")
+        if (runOfflineCommand(prompt)) return
         val key = getSharedPreferences("atlas", MODE_PRIVATE).getString("gemini_key", "") ?: ""
         if (key.isBlank()) {
             Toast.makeText(this, "Add your Gemini API key in Settings first", Toast.LENGTH_LONG).show()
             showSettings()
             return
         }
-        input.setText("")
         addMessage("You", prompt)
         history.put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", prompt))))
         sendButton.isEnabled = false
