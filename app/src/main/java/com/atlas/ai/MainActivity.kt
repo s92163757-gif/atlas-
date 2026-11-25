@@ -33,14 +33,14 @@ class MainActivity : Activity() {
     private lateinit var input: EditText
     private lateinit var sendButton: Button
     private val executor = Executors.newSingleThreadExecutor()
-    private val history = JSONArray()
+    private val localHistory = JSONArray()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
         buildScreen()
-        addMessage("Atlas", "Hey! I'm Atlas AI. Add your Gemini API key in Settings to start chatting. Your key stays on this device.")
+        addMessage("Atlas", "Hey! I'm Atlas AI. Start the local model server, then chat with me offline. Server: http://127.0.0.1:11434")
     }
 
     private fun buildScreen() {
@@ -192,18 +192,12 @@ class MainActivity : Activity() {
         if (prompt.isEmpty()) return
         input.setText("")
         if (runOfflineCommand(prompt)) return
-        val key = getSharedPreferences("atlas", MODE_PRIVATE).getString("gemini_key", "") ?: ""
-        if (key.isBlank()) {
-            Toast.makeText(this, "Add your Gemini API key in Settings first", Toast.LENGTH_LONG).show()
-            showSettings()
-            return
-        }
         addMessage("You", prompt)
-        history.put(JSONObject().put("role", "user").put("parts", JSONArray().put(JSONObject().put("text", prompt))))
+        localHistory.put(JSONObject().put("role", "user").put("content", prompt))
         sendButton.isEnabled = false
         sendButton.text = "..."
         executor.execute {
-            val answer = requestGemini(key)
+            val answer = requestLocal()
             runOnUiThread {
                 sendButton.isEnabled = true
                 sendButton.text = "Send"
@@ -211,12 +205,57 @@ class MainActivity : Activity() {
                     addMessage("Atlas", answer.removePrefix("ERROR:"))
                 } else {
                     addMessage("Atlas", answer)
-                    history.put(JSONObject().put("role", "model").put("parts", JSONArray().put(JSONObject().put("text", answer))))
+                    localHistory.put(JSONObject().put("role", "assistant").put("content", answer))
                 }
             }
         }
     }
 
+    private fun requestLocal(): String {
+        var connection: HttpURLConnection? = null
+        return try {
+            val base = getSharedPreferences("atlas", MODE_PRIVATE)
+                .getString("local_server_url", "http://127.0.0.1:11434")!!
+                .trim().trimEnd('/')
+            connection = (URL(base + "/v1/models").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 8000
+                readTimeout = 15000
+            }
+            val modelCode = connection.responseCode
+            val modelBody = (if (modelCode in 200..299) connection.inputStream else connection.errorStream)
+                .bufferedReader().use { it.readText() }
+            if (modelCode !in 200..299) return "ERROR:Local model server returned HTTP $modelCode. Make sure the server is running."
+            val models = JSONObject(modelBody).optJSONArray("data")
+            val model = models?.optJSONObject(0)?.optString("id").orEmpty()
+            if (model.isBlank()) return "ERROR:No loaded model found. Load your Qwen model and keep the local server running."
+            connection.disconnect()
+            connection = (URL(base + "/v1/chat/completions").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10000
+                readTimeout = 120000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+            }
+            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", 512)
+            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
+            val code = connection.responseCode
+            val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
+                .bufferedReader().use { it.readText() }
+            if (code !in 200..299) {
+                "ERROR:Local AI error (HTTP $code): " + response.take(500)
+            } else {
+                JSONObject(response).optJSONArray("choices")?.optJSONObject(0)
+                    ?.optJSONObject("message")?.optString("content")
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "I could not read the local model response. Please try again."
+            }
+        } catch (e: Exception) {
+            "ERROR:Cannot reach the local AI server. Open LLM AI Server, start API/WebUI, and keep it running. Details: " + (e.message ?: "connection failed")
+        } finally {
+            connection?.disconnect()
+        }
+    }
     private fun requestGemini(key: String): String {
         var connection: HttpURLConnection? = null
         return try {
