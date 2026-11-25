@@ -45,8 +45,19 @@ class MainActivity : Activity() {
         window.statusBarColor = bg
         window.navigationBarColor = bg
         AtlasDeviceScanner.save(this, AtlasDeviceScanner.scan(this))
+        applyAtlasWallpaperOnce()
         buildScreen()
         addMessage("ATLAS", "Hey! Main Atlas hoon. Local AI server start rakho aur mujhse chat karo. Voice button se commands bhi de sakte ho.\n\nAtlas response speed may depend on your device's performance and computing processing power.")
+    }
+
+    private fun applyAtlasWallpaperOnce() {
+        val prefs = getSharedPreferences("atlas", MODE_PRIVATE)
+        if (!prefs.getBoolean("atlas_wallpaper_applied", false)) {
+            try {
+                android.app.WallpaperManager.getInstance(this).setResource(R.drawable.atlas_wallpaper)
+                prefs.edit().putBoolean("atlas_wallpaper_applied", true).apply()
+            } catch (_: Exception) { }
+        }
     }
 
     private fun buildScreen() {
