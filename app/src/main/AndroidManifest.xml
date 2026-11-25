@@ -1,17 +1,17 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n    <queries><intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent></queries>
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <application android:theme="@style/AppTheme" android:label="Atlas AI" android:icon="@drawable/atlas_icon" android:roundIcon="@drawable/atlas_icon" android:usesCleartextTraffic="true">
+    <application android:theme="@style/AppTheme" android:label="Atlas OS" android:icon="@drawable/atlas_icon" android:roundIcon="@drawable/atlas_icon" android:usesCleartextTraffic="true">
         <service
             android:name=".VoiceWakeService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
         <activity android:name=".SettingsActivity" android:exported="false" />
-        <activity android:name=".BrowserActivity" android:exported="false" />
+        <activity android:name=".BrowserActivity" android:exported="false" />\n        <activity android:name=".HomeActivity" android:exported="true" android:label="Atlas OS">\n            <intent-filter><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.HOME" /><category android:name="android.intent.category.DEFAULT" /></intent-filter>\n        </activity>
         <activity android:name=".DeviceScanActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
