@@ -5,11 +5,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <application android:theme="@style/AppTheme" android:label="Atlas AI" android:usesCleartextTraffic="true">
+    <application android:theme="@style/AppTheme" android:label="Atlas AI" android:icon="@drawable/atlas_icon" android:roundIcon="@drawable/atlas_icon" android:usesCleartextTraffic="true">
         <service
             android:name=".VoiceWakeService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+        <activity android:name=".SettingsActivity" android:exported="false" />
         <activity android:name=".BrowserActivity" android:exported="false" />
         <activity android:name=".DeviceScanActivity" android:exported="false" />
         <activity android:name=".MainActivity" android:exported="true">
