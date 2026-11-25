@@ -2,13 +2,15 @@ package com.atlas.ai
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
-import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
-import android.speech.RecognizerIntent
 import android.os.Bundle
+import android.provider.MediaStore
+import android.speech.RecognizerIntent
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
@@ -22,32 +24,34 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class MainActivity : Activity() {
-    private val bg = Color.rgb(16, 17, 26)
-    private val panel = Color.rgb(27, 29, 43)
+    private val bg = Color.rgb(12, 14, 24)
+    private val panel = Color.rgb(25, 28, 43)
+    private val panel2 = Color.rgb(34, 37, 56)
     private val accent = Color.rgb(139, 124, 255)
     private lateinit var messages: LinearLayout
     private lateinit var scroll: ScrollView
     private lateinit var input: EditText
     private lateinit var sendButton: Button
+    private lateinit var statusText: TextView
     private val executor = Executors.newSingleThreadExecutor()
     private val localHistory = JSONArray()
-    private val history = JSONArray() // retained for the optional Gemini request helper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.statusBarColor = bg
         window.navigationBarColor = bg
         buildScreen()
-        addMessage("Atlas", "Hey! I'm Atlas AI. Start the local model server, then chat with me offline. Server: http://127.0.0.1:11434")
+        addMessage("ATLAS", "Hey! Main Atlas hoon. Local AI server start rakho aur mujhse chat karo. Voice button se commands bhi de sakte ho.")
     }
 
     private fun buildScreen() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(16), dp(14), dp(16), dp(12))
             setBackgroundColor(bg)
         }
         val header = LinearLayout(this).apply {
@@ -56,46 +60,64 @@ class MainActivity : Activity() {
         }
         val brand = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; layoutParams = LinearLayout.LayoutParams(0, -2, 1f) }
         brand.addView(TextView(this).apply {
-            text = "ATLAS AI"
-            textSize = 20f
+            text = "ATLAS"
+            textSize = 25f
             setTextColor(Color.WHITE)
-            typeface = Typeface.DEFAULT_BOLD
-            letterSpacing = 0.08f
+            typeface = Typeface.create("sans-serif", Typeface.BOLD)
+            letterSpacing = 0.12f
         })
         brand.addView(TextView(this).apply {
-            text = "Your personal AI assistant"
-            textSize = 12f
-            setTextColor(Color.LTGRAY)
+            text = "YOUR AI • YOUR PHONE"
+            textSize = 10f
+            setTextColor(Color.rgb(160, 163, 185))
+            letterSpacing = 0.12f
         })
         header.addView(brand)
         header.addView(Button(this).apply {
-            text = "Settings"
+            text = "⚙"
+            textSize = 20f
             setTextColor(Color.WHITE)
-            background = rounded(accent, 18)
+            background = rounded(panel2, 16)
             setOnClickListener { showSettings() }
         })
         root.addView(header)
-        root.addView(View(this).apply { setBackgroundColor(Color.rgb(48, 49, 66)) },
-            LinearLayout.LayoutParams(-1, dp(1)).apply { topMargin = dp(12); bottomMargin = dp(8) })
+
+        val status = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(9), dp(12), dp(9))
+            background = rounded(panel, 16)
+        }
+        status.addView(View(this).apply {
+            background = rounded(Color.rgb(73, 210, 145), 50)
+        }, LinearLayout.LayoutParams(dp(8), dp(8)))
+        statusText = TextView(this).apply {
+            text = "  LOCAL AI  •  127.0.0.1:11434"
+            textSize = 11f
+            setTextColor(Color.rgb(190, 194, 215))
+            letterSpacing = 0.04f
+        }
+        status.addView(statusText)
+        root.addView(status, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(14) })
 
         scroll = ScrollView(this).apply { isFillViewport = true; overScrollMode = View.OVER_SCROLL_NEVER }
-        messages = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(8), 0, dp(12)) }
+        messages = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, dp(12), 0, dp(14)) }
         scroll.addView(messages)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val composer = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(8), dp(6), dp(6), dp(6))
+            setPadding(dp(7), dp(6), dp(6), dp(6))
             background = rounded(panel, 24)
         }
         input = EditText(this).apply {
             hint = "Message Atlas..."
-            setHintTextColor(Color.GRAY)
+            setHintTextColor(Color.rgb(130, 134, 157))
             setTextColor(Color.WHITE)
             textSize = 15f
             maxLines = 4
-            setPadding(dp(10), dp(8), dp(8), dp(8))
+            setPadding(dp(10), dp(9), dp(8), dp(9))
             setBackgroundColor(Color.TRANSPARENT)
             imeOptions = EditorInfo.IME_ACTION_SEND
             setOnEditorActionListener { _, action, _ ->
@@ -104,41 +126,56 @@ class MainActivity : Activity() {
         }
         composer.addView(input, LinearLayout.LayoutParams(0, -2, 1f))
         composer.addView(Button(this).apply {
-            text = "Voice"
+            text = "🎙"
+            textSize = 18f
             setTextColor(Color.WHITE)
-            background = rounded(Color.rgb(67, 72, 100), 20)
+            background = rounded(Color.rgb(68, 72, 105), 18)
             setOnClickListener { startVoiceInput() }
         })
         sendButton = Button(this).apply {
-            text = "Send"
+            text = "➤"
+            textSize = 18f
             setTextColor(Color.WHITE)
-            background = rounded(accent, 20)
+            background = rounded(accent, 18)
             setOnClickListener { sendMessage() }
         }
-        composer.addView(sendButton)
-        root.addView(composer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(8) })
+        composer.addView(sendButton, LinearLayout.LayoutParams(dp(52), dp(48)).apply { leftMargin = dp(6) })
+        root.addView(composer, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(10) })
+        root.addView(TextView(this).apply {
+            text = "Voice commands: “open YouTube”, “open settings”, “volume up”"
+            textSize = 10f
+            setTextColor(Color.rgb(125, 129, 151))
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, 0)
+        })
         setContentView(root)
     }
 
     private fun addMessage(who: String, body: String) {
+        val isUser = who == "YOU"
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-            background = rounded(if (who == "You") Color.rgb(48, 43, 82) else panel, 18)
+            setPadding(dp(14), dp(11), dp(14), dp(11))
+            background = rounded(if (isUser) Color.rgb(54, 47, 91) else panel, 18)
         }
         card.addView(TextView(this).apply {
             text = who
-            textSize = 12f
+            textSize = 10f
             typeface = Typeface.DEFAULT_BOLD
-            setTextColor(if (who == "You") Color.rgb(190, 181, 255) else accent)
+            letterSpacing = 0.08f
+            setTextColor(if (isUser) Color.rgb(199, 190, 255) else accent)
         })
         card.addView(TextView(this).apply {
             text = body
             textSize = 15f
-            setTextColor(Color.WHITE)
-            setPadding(0, dp(4), 0, 0)
+            setTextColor(Color.rgb(245, 246, 252))
+            setPadding(0, dp(5), 0, 0)
         })
-        messages.addView(card, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6); bottomMargin = dp(6) })
+        val params = LinearLayout.LayoutParams(if (isUser) (resources.displayMetrics.widthPixels * 0.82).toInt() else -1, -2)
+        params.gravity = if (isUser) Gravity.END else Gravity.START
+        params.topMargin = dp(6)
+        params.bottomMargin = dp(6)
+        messages.addView(card, params)
         scroll.post { scroll.fullScroll(View.FOCUS_DOWN) }
     }
 
@@ -146,12 +183,13 @@ class MainActivity : Activity() {
         try {
             val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak to Atlas")
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak a command to Atlas")
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
             }
             @Suppress("DEPRECATION")
             startActivityForResult(intent, 7001)
         } catch (_: Exception) {
-            Toast.makeText(this, "Voice input is not available on this phone", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Voice recognition is not available. Check Google speech services.", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -167,47 +205,96 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun runOfflineCommand(prompt: String): Boolean {
-        val command = prompt.trim().lowercase()
-        val target = when {
-            command.matches(Regex("(open|launch|start)\\s+youtube")) -> "https://www.youtube.com"
-            command.matches(Regex("(open|launch|start)\\s+google")) -> "https://www.google.com"
-            command.matches(Regex("(open|launch|start)\\s+chrome")) -> "https://www.google.com"
-            command.matches(Regex("(open|launch|start)\\s+whatsapp")) -> "https://wa.me/"
-            command.matches(Regex("(open|launch|start)\\s+maps")) -> "https://maps.google.com"
-            else -> null
-        } ?: return false
-        return try {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(target)))
-            addMessage("You", prompt)
-            addMessage("Atlas", "Opening " + target.substringAfter("://").substringBefore("/"))
-            true
-        } catch (_: Exception) {
-            addMessage("Atlas", "I couldn't open that app or website.")
-            true
+    private fun runPhoneCommand(prompt: String): Boolean {
+        val command = prompt.trim()
+        val lower = command.lowercase(Locale.ROOT)
+        fun done(message: String) {
+            addMessage("YOU", command)
+            addMessage("ATLAS", message)
         }
+        try {
+            when {
+                lower.matches(Regex("(open|launch|start)\\s+(youtube|google|chrome|whatsapp|maps|camera|settings|phone|dialer)")) -> {
+                    val app = lower.substringAfterLast(" ")
+                    when (app) {
+                        "settings" -> startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                        "camera" -> startActivity(Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+                        "phone", "dialer" -> startActivity(Intent(Intent.ACTION_DIAL))
+                        "youtube" -> openPackage("com.google.android.youtube", "https://www.youtube.com")
+                        "google" -> openPackage("com.google.android.googlequicksearchbox", "https://www.google.com")
+                        "chrome" -> openPackage("com.android.chrome", "https://www.google.com")
+                        "whatsapp" -> openPackage("com.whatsapp", "https://wa.me/")
+                        "maps" -> openPackage("com.google.android.apps.maps", "https://maps.google.com")
+                    }
+                    done("Opening $app.")
+                    return true
+                }
+                lower == "volume up" || lower == "increase volume" -> {
+                    (getSystemService(AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                    done("Volume up.")
+                    return true
+                }
+                lower == "volume down" || lower == "decrease volume" -> {
+                    (getSystemService(AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                    done("Volume down.")
+                    return true
+                }
+                lower == "mute" || lower == "mute media" -> {
+                    (getSystemService(AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_MUTE, AudioManager.FLAG_SHOW_UI)
+                    done("Media muted.")
+                    return true
+                }
+                lower == "unmute" || lower == "unmute media" -> {
+                    (getSystemService(AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, AudioManager.FLAG_SHOW_UI)
+                    done("Media unmuted.")
+                    return true
+                }
+                lower.startsWith("call ") -> {
+                    val number = command.substringAfter(" ").trim()
+                    if (number.isBlank()) return false
+                    startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(number))))
+                    done("Dialler opened. Review the number and tap call yourself.")
+                    return true
+                }
+                lower.startsWith("search ") -> {
+                    val query = command.substringAfter(" ").trim()
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + Uri.encode(query))))
+                    done("Searching the web for: $query")
+                    return true
+                }
+            }
+        } catch (_: Exception) {
+            done("I couldn't perform that action. Your phone may not have a compatible app.")
+            return true
+        }
+        return false
+    }
+
+    private fun openPackage(packageName: String, fallback: String) {
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        if (launch != null) startActivity(launch)
+        else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(fallback)))
     }
 
     private fun sendMessage() {
         val prompt = input.text.toString().trim()
         if (prompt.isEmpty()) return
         input.setText("")
-        if (runOfflineCommand(prompt)) return
-        addMessage("You", prompt)
+        if (runPhoneCommand(prompt)) return
+        addMessage("YOU", prompt)
         localHistory.put(JSONObject().put("role", "user").put("content", prompt))
+        while (localHistory.length() > 12) localHistory.remove(0)
         sendButton.isEnabled = false
-        sendButton.text = "..."
+        sendButton.text = "…"
+        statusText.text = "  CONNECTING TO LOCAL AI…"
         executor.execute {
             val answer = requestLocal()
             runOnUiThread {
                 sendButton.isEnabled = true
-                sendButton.text = "Send"
-                if (answer.startsWith("ERROR:")) {
-                    addMessage("Atlas", answer.removePrefix("ERROR:"))
-                } else {
-                    addMessage("Atlas", answer)
-                    localHistory.put(JSONObject().put("role", "assistant").put("content", answer))
-                }
+                sendButton.text = "➤"
+                statusText.text = "  LOCAL AI  •  127.0.0.1:11434"
+                addMessage("ATLAS", if (answer.startsWith("ERROR:")) answer.removePrefix("ERROR:") else answer)
+                if (!answer.startsWith("ERROR:")) localHistory.put(JSONObject().put("role", "assistant").put("content", answer))
             }
         }
     }
@@ -226,64 +313,29 @@ class MainActivity : Activity() {
             val modelCode = connection.responseCode
             val modelBody = (if (modelCode in 200..299) connection.inputStream else connection.errorStream)
                 .bufferedReader().use { it.readText() }
-            if (modelCode !in 200..299) return "ERROR:Local model server returned HTTP $modelCode. Make sure the server is running."
+            if (modelCode !in 200..299) return "ERROR:Local server HTTP $modelCode. Check that the API server is running."
             val models = JSONObject(modelBody).optJSONArray("data")
             val model = models?.optJSONObject(0)?.optString("id").orEmpty()
-            if (model.isBlank()) return "ERROR:No loaded model found. Load your Qwen model and keep the local server running."
+            if (model.isBlank()) return "ERROR:No loaded model found. Load the GGUF model in LLM AI Server first."
             connection.disconnect()
             connection = (URL(base + "/v1/chat/completions").openConnection() as HttpURLConnection).apply {
                 requestMethod = "POST"
                 connectTimeout = 10000
-                readTimeout = 120000
+                readTimeout = 180000
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json")
             }
-            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", 512)
+            val payload = JSONObject().put("model", model).put("messages", localHistory).put("stream", false).put("max_tokens", 256)
             connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
             val code = connection.responseCode
             val response = (if (code in 200..299) connection.inputStream else connection.errorStream)
                 .bufferedReader().use { it.readText() }
-            if (code !in 200..299) {
-                "ERROR:Local AI error (HTTP $code): " + response.take(500)
-            } else {
-                JSONObject(response).optJSONArray("choices")?.optJSONObject(0)
-                    ?.optJSONObject("message")?.optString("content")
-                    ?.takeIf { it.isNotBlank() }
-                    ?: "I could not read the local model response. Please try again."
-            }
+            if (code !in 200..299) "ERROR:Local AI HTTP $code: " + response.take(350)
+            else JSONObject(response).optJSONArray("choices")?.optJSONObject(0)
+                ?.optJSONObject("message")?.optString("content")?.takeIf { it.isNotBlank() }
+                ?: "I couldn't read the local model response. Try again."
         } catch (e: Exception) {
-            "ERROR:Cannot reach the local AI server. Open LLM AI Server, start API/WebUI, and keep it running. Details: " + (e.message ?: "connection failed")
-        } finally {
-            connection?.disconnect()
-        }
-    }
-    private fun requestGemini(key: String): String {
-        var connection: HttpURLConnection? = null
-        return try {
-            val url = URL("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + key)
-            connection = (url.openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 20000
-                readTimeout = 60000
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json")
-            }
-            val payload = JSONObject().put("contents", history)
-            connection.outputStream.use { it.write(payload.toString().toByteArray(Charsets.UTF_8)) }
-            val code = connection.responseCode
-            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-            val response = stream.bufferedReader().use { it.readText() }
-            if (code !in 200..299) {
-                val detail = try { JSONObject(response).optJSONObject("error")?.optString("message") ?: response } catch (_: Exception) { response }
-                "ERROR:" + detail
-            } else {
-                val json = JSONObject(response)
-                json.optJSONArray("candidates")?.optJSONObject(0)?.optJSONObject("content")
-                    ?.optJSONArray("parts")?.optJSONObject(0)?.optString("text")
-                    ?: "I couldn't read the response. Please try again."
-            }
-        } catch (e: Exception) {
-            "ERROR:" + (e.message ?: "Connection failed. Check your internet and API key.")
+            "ERROR:Can't reach local AI server. Keep LLM AI Server running on this phone. Details: " + (e.message ?: "connection failed")
         } finally {
             connection?.disconnect()
         }
@@ -291,32 +343,34 @@ class MainActivity : Activity() {
 
     private fun showSettings() {
         val field = EditText(this).apply {
-            hint = "Paste Gemini API key"
+            hint = "http://127.0.0.1:11434"
             setSingleLine(true)
-            inputType = 0x00000081
-            setText(getSharedPreferences("atlas", MODE_PRIVATE).getString("gemini_key", ""))
+            setText(getSharedPreferences("atlas", MODE_PRIVATE).getString("local_server_url", "http://127.0.0.1:11434"))
         }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
             addView(TextView(this@MainActivity).apply {
-                text = "Get a free key from Google AI Studio. The key is saved only on this phone; never share it or commit it to GitHub."
+                text = "Local API server address. Keep LLM AI Server running on this phone. Gemini key is not needed for local chat."
                 textSize = 13f
                 setTextColor(Color.DKGRAY)
             })
             addView(field)
         }
         AlertDialog.Builder(this)
-            .setTitle("Atlas AI Settings")
+            .setTitle("Atlas Settings")
             .setView(box)
             .setPositiveButton("Save") { _, _ ->
-                getSharedPreferences("atlas", MODE_PRIVATE).edit().putString("gemini_key", field.text.toString().trim()).apply()
-                Toast.makeText(this, "API key saved on this device", Toast.LENGTH_SHORT).show()
+                val address = field.text.toString().trim().trimEnd('/')
+                getSharedPreferences("atlas", MODE_PRIVATE).edit().putString("local_server_url", address).apply()
+                Toast.makeText(this, "Local server address saved", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Clear chat") { _, _ ->
+                localHistory.length().let { while (localHistory.length() > 0) localHistory.remove(0) }
+                messages.removeAllViews()
+                addMessage("ATLAS", "Chat cleared. I'm ready.")
             }
             .setNegativeButton("Cancel", null)
-            .setNeutralButton("Clear key") { _, _ ->
-                getSharedPreferences("atlas", MODE_PRIVATE).edit().remove("gemini_key").apply()
-            }
             .show()
     }
 
